@@ -1,15 +1,63 @@
+import { headers } from 'next/headers';
 import { TrackedList } from '@/components/TrackedList';
 import { EmptyState } from '@/components/EmptyState';
 import { AddProductButton } from '@/components/AddProductButton';
 import { AuroraBg } from '@/components/AuroraBg';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { WelcomeModal } from '@/components/WelcomeModal';
-import Link from 'next/link';
+import { ReferralCard } from '@/components/ReferralCard';
+import { UserMenu } from '@/components/UserMenu';
 
-async function getTrackedItems() {
+export const dynamic = 'force-dynamic';
+
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+
+interface TrackedResponse {
+  items: Array<{
+    id: string;
+    product: {
+      id: string;
+      title: string;
+      store: string;
+      original_url?: string;
+      url?: string;
+      last_price: string | number;
+      in_stock: boolean | null;
+      last_scraped_at: string | null;
+      price_history: Array<{ price: string | number }>;
+    };
+  }>;
+  plan: string;
+  count: number;
+}
+
+interface ReferralSummary {
+  referralCode: string;
+  successfulReferrals: number;
+  bonusTrackingSlots: number;
+  baseTrackingLimit: number;
+  totalTrackingLimit: number;
+  maxBonusTrackingSlots: number;
+}
+
+interface CurrentUser {
+  id: string;
+  email: string;
+  role: string;
+  authProvider?: string;
+}
+
+function formatFirstName(email: string) {
+  const raw = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
+  const firstName = raw.split(/\s+/)[0] ?? '';
+  return firstName.charAt(0).toUpperCase() + firstName.slice(1);
+}
+
+async function getTrackedItems(cookie: string): Promise<TrackedResponse> {
   try {
-    const res = await fetch(`${process.env.API_URL ?? 'http://localhost:3000'}/api/tracked-items`, {
+    const res = await fetch(`${APP_URL}/api/tracked-items`, {
       cache: 'no-store',
+      headers: cookie ? { cookie } : undefined,
     });
     if (!res.ok) return { items: [], plan: 'FREE', count: 0 };
     return res.json();
@@ -18,17 +66,47 @@ async function getTrackedItems() {
   }
 }
 
+async function getReferralSummary(cookie: string): Promise<ReferralSummary | null> {
+  try {
+    const res = await fetch(`${APP_URL}/api/auth/referral-summary`, {
+      cache: 'no-store',
+      headers: cookie ? { cookie } : undefined,
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
+async function getCurrentUser(cookie: string): Promise<CurrentUser | null> {
+  try {
+    const res = await fetch(`${APP_URL}/api/auth/me`, {
+      cache: 'no-store',
+      headers: cookie ? { cookie } : undefined,
+    });
+    if (!res.ok) return null;
+    return res.json();
+  } catch {
+    return null;
+  }
+}
+
 export default async function DashboardPage() {
-  const { items, plan, count } = await getTrackedItems();
-  const limit = 5;
-  const pct = Math.min((count / limit) * 100, 100);
+  const cookie = (await headers()).get('cookie') ?? '';
+  const [{ items, plan }, referralSummary, currentUser] = await Promise.all([
+    getTrackedItems(cookie),
+    getReferralSummary(cookie),
+    getCurrentUser(cookie),
+  ]);
+  const totalLimit = referralSummary?.totalTrackingLimit ?? 5;
+  const firstName = currentUser?.email ? formatFirstName(currentUser.email) : '';
 
   return (
     <div className="min-h-screen">
       <AuroraBg />
       <WelcomeModal />
 
-      {/* Navbar */}
       <nav
         className="page-content sticky top-0 z-50"
         style={{
@@ -37,68 +115,57 @@ export default async function DashboardPage() {
           borderBottom: '1px solid var(--glass-border)',
         }}
       >
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3 flex items-center justify-between gap-3">
-          <span className="text-base sm:text-lg font-black gradient-text shrink-0">SeerPrice</span>
+        <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <span className="shrink-0 text-base font-black gradient-text sm:text-lg">SeerPrice</span>
 
-          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="min-w-0 flex items-center gap-2 sm:gap-3">
             {plan === 'FREE' ? (
-              <Link
-                href="/billing"
-                className="text-xs font-semibold px-2.5 sm:px-3 py-1.5 rounded-lg shrink-0"
+              <span
+                className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold sm:px-3"
                 style={{
                   background: 'rgba(34,211,238,0.08)',
                   border: '1px solid rgba(34,211,238,0.2)',
                   color: 'var(--cyan)',
                 }}
               >
-                ⚡ <span className="hidden sm:inline">Upgrade to </span>Pro
-              </Link>
+                Limit {totalLimit}
+              </span>
             ) : (
-              <span className="text-xs font-semibold shrink-0" style={{ color: 'var(--emerald)' }}>
-                ✦ Pro
+              <span className="shrink-0 text-xs font-semibold" style={{ color: 'var(--emerald)' }}>
+                Pro
               </span>
             )}
 
             <ThemeToggle />
-
-            <Link
-              href="/login"
-              aria-label="Sign out"
-              title="Sign out"
-              className="btn-icon-circle"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </Link>
+            {currentUser?.email ? <UserMenu email={currentUser.email} /> : null}
           </div>
         </div>
       </nav>
 
-      <div className="page-content max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-6 gap-3">
+      <div className="page-content mx-auto flex max-w-4xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
+        <ReferralCard summary={referralSummary} />
+
+        <div className="mb-1 flex items-start justify-between gap-3">
           <div>
-            <h1
-              className="text-xl sm:text-2xl font-bold mb-1"
-              style={{ color: 'var(--text-primary)' }}
-            >
+            {firstName && (
+              <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--cyan)' }}>
+                Hello, {firstName}!
+              </p>
+            )}
+            <h1 className="mb-1 text-xl font-bold sm:text-2xl" style={{ color: 'var(--text-primary)' }}>
               My Tracked Products
             </h1>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Real-time prices across Egyptian stores
+              Tap any item to expand details, chart, and alert rules
             </p>
           </div>
           <AddProductButton />
         </div>
 
-        {/* Product list */}
         {items.length === 0 ? (
-          <EmptyState />
+          <EmptyState name={firstName} />
         ) : (
-          <TrackedList initialItems={items} plan={plan} />
+          <TrackedList initialItems={items} plan={plan} totalLimit={totalLimit} />
         )}
       </div>
     </div>

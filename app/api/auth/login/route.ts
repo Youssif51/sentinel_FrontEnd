@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proxyToNest } from '@/lib/proxy';
+import { attachSessionFromJson, setSessionCookie } from '@/lib/auth';
+import { shouldUseRealApi } from '@/lib/runtime-mode';
 
-const USE_REAL_API = !!process.env.API_URL;
+const USE_REAL_API = shouldUseRealApi();
 
 export async function POST(request: NextRequest) {
   if (USE_REAL_API) {
     const body = await request.json();
     const res = await proxyToNest(request, '/auth/login', { body, method: 'POST' });
-
-    // If NestJS returns a token in the body, store it as an httpOnly cookie
-    if (res.status === 200 || res.status === 201) {
-      const data = await res.clone().json().catch(() => null);
-      if (data?.access_token) {
-        res.cookies.set('session', data.access_token, {
-          httpOnly: true,
-          path: '/',
-          maxAge: 60 * 60 * 24 * 7,
-          sameSite: 'lax',
-        });
-      }
-    }
-    return res;
+    return attachSessionFromJson(res);
   }
 
   // ── Mock fallback ──
@@ -39,8 +28,6 @@ export async function POST(request: NextRequest) {
   }
 
   const response = NextResponse.json({ message: 'Login successful' }, { status: 200 });
-  response.cookies.set('session', 'mock-jwt-token', {
-    httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7, sameSite: 'lax',
-  });
+  setSessionCookie(response, 'mock-jwt-token');
   return response;
 }

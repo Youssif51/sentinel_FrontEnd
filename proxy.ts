@@ -6,21 +6,22 @@ const PUBLIC_PATHS = [
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/google',
-  '/api/auth/facebook',
+  '/api/auth/social/callback',
   '/api/auth/refresh',
   '/api/auth/logout',
 ];
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow public routes and static assets
   const isPublic =
-    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
+    PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon');
 
-  if (isPublic) return NextResponse.next();
+  if (isPublic) {
+    return NextResponse.next();
+  }
 
   const session = request.cookies.get('session')?.value;
 

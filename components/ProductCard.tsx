@@ -1,9 +1,11 @@
 'use client';
-import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { timeAgo } from '@/lib/utils';
 import { Toast } from './Toast';
 import type { ToastType } from './Toast';
+import { AlertRulesPanel } from './AlertRulesPanel';
+import { PriceChart } from './PriceChart';
 
 interface TrackedItem {
   id: string;
@@ -11,18 +13,39 @@ interface TrackedItem {
     id: string;
     title: string;
     store: string;
+    original_url?: string;
+    url?: string;
     last_price: string | number;
-    in_stock: boolean;
-    last_scraped_at: string;
+    in_stock: boolean | null;
+    last_scraped_at: string | null;
     price_history: Array<{ price: string | number }>;
   };
 }
 
-interface ToastState { type: ToastType; title: string; message?: string; }
+interface AlertRule {
+  id: string;
+  tracked_item_id?: string;
+  trackedItemId?: string;
+  productId?: string;
+  type: 'PERCENTAGE_DROP' | 'TARGET_PRICE';
+  threshold: number | string;
+  last_fired_at?: string | null;
+}
+
+interface PricePoint {
+  scraped_at: string;
+  price: number | string;
+  in_stock: boolean;
+}
+
+interface ToastState {
+  type: ToastType;
+  title: string;
+  message?: string;
+}
 
 const TrashIcon = () => (
-  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="3 6 5 6 21 6" />
     <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
     <path d="M10 11v6M14 11v6" />
@@ -37,9 +60,13 @@ export function ProductCard({
   item: TrackedItem;
   onDeleted?: () => void;
 }) {
-  const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [rules, setRules] = useState<AlertRule[]>([]);
+  const [chartData, setChartData] = useState<PricePoint[]>([]);
+  const [loadingRules, setLoadingRules] = useState(false);
+  const [loadingChart, setLoadingChart] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const currentPrice = Number(item.product.last_price);
@@ -51,10 +78,79 @@ export function ProductCard({
       ? Math.round(((currentPrice - previousPrice) / previousPrice) * 100)
       : null;
   const isPriceDrop = changePercent !== null && changePercent < 0;
+  const originalUrl = item.product.original_url ?? item.product.url;
+
+  useEffect(() => {
+    if (!expanded) return;
+    let cancelled = false;
+
+    async function loadRules() {
+      setLoadingRules(true);
+      try {
+        const res = await fetch(`/api/alert-rules?trackedItemId=${item.id}&productId=${item.product.id}`);
+        const data = await res.json().catch(() => []);
+        if (!cancelled) {
+          const filtered = Array.isArray(data)
+            ? data.filter((rule) => {
+                const owner = rule.tracked_item_id ?? rule.trackedItemId ?? rule.productId;
+                return owner === item.id || owner === item.product.id || owner === `track-${item.product.id}`;
+              })
+            : [];
+          setRules(filtered);
+        }
+      } catch {
+        if (!cancelled) {
+          setRules([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingRules(false);
+        }
+      }
+    }
+
+    void loadRules();
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, item.id, item.product.id]);
+
+  useEffect(() => {
+    if (!expanded) return;
+    let cancelled = false;
+
+    async function loadChart() {
+      setLoadingChart(true);
+      try {
+        const res = await fetch(`/api/price-history/${item.id}?days=30`);
+        const data = await res.json().catch(() => []);
+        if (!cancelled) {
+          setChartData(Array.isArray(data) ? data : []);
+        }
+      } catch {
+        if (!cancelled) {
+          setChartData([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoadingChart(false);
+        }
+      }
+    }
+
+    void loadChart();
+    return () => {
+      cancelled = true;
+    };
+  }, [expanded, item.id]);
 
   async function handleDelete(e: React.MouseEvent) {
     e.stopPropagation();
-    if (!confirming) { setConfirming(true); return; }
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+
     setDeleting(true);
     try {
       const res = await fetch(`/api/tracked-items?id=${item.id}`, { method: 'DELETE' });
@@ -62,16 +158,14 @@ export function ProductCard({
         setToast({ type: 'success', title: 'Product removed', message: item.product.title });
         if (onDeleted) {
           setTimeout(onDeleted, 400);
-        } else {
-          setTimeout(() => router.refresh(), 800);
         }
       } else {
-        setToast({ type: 'error', title: 'Failed to remove', message: 'Please try again' });
+        setToast({ type: 'error', title: 'Failed to remove', message: 'Please try again.' });
         setDeleting(false);
         setConfirming(false);
       }
     } catch {
-      setToast({ type: 'error', title: 'Network error', message: 'Check your connection' });
+      setToast({ type: 'error', title: 'Network error', message: 'Check your connection.' });
       setDeleting(false);
       setConfirming(false);
     }
@@ -87,11 +181,9 @@ export function ProductCard({
       <div
         className="glass border-glow-animated cursor-pointer"
         style={{ padding: '14px 16px' }}
-        onClick={() => !confirming && router.push(`/products/${item.product.id}`)}
+        onClick={() => !confirming && setExpanded((value) => !value)}
       >
-        {/* Row 1: title + price + trash */}
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
-          {/* Title */}
           <h3
             style={{
               color: 'var(--text-primary)',
@@ -109,7 +201,6 @@ export function ProductCard({
             {item.product.title}
           </h3>
 
-          {/* Price */}
           <div style={{ flexShrink: 0, textAlign: 'right', minWidth: '100px' }}>
             <p
               style={{
@@ -128,7 +219,6 @@ export function ProductCard({
             </p>
           </div>
 
-          {/* Trash — always visible */}
           {!confirming && (
             <button
               onClick={handleDelete}
@@ -162,7 +252,6 @@ export function ProductCard({
           )}
         </div>
 
-        {/* Row 2: store / time / badges / confirm buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <span
             style={{
@@ -187,7 +276,6 @@ export function ProductCard({
 
           <div style={{ flex: 1 }} />
 
-          {/* Price change badge — hidden when confirming */}
           {changePercent !== null && !confirming && (
             <span
               style={{
@@ -205,22 +293,17 @@ export function ProductCard({
             </span>
           )}
 
-          {/* Stock badge — hidden when confirming */}
           {!confirming && (
             <span
               className={item.product.in_stock ? 'badge-instock' : 'badge-outofstock'}
               style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}
             >
-              {item.product.in_stock ? '● In Stock' : '● Out of Stock'}
+              {item.product.in_stock ? 'In Stock' : 'Out of Stock'}
             </span>
           )}
 
-          {/* Confirm delete inline */}
           {confirming && (
-            <div
-              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              onClick={e => e.stopPropagation()}
-            >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Remove this product?</span>
               <button
                 onClick={handleCancel}
@@ -262,6 +345,86 @@ export function ProductCard({
             </div>
           )}
         </div>
+
+        {expanded && (
+          <div
+            className="mt-4 rounded-2xl border p-4"
+            style={{
+              borderColor: 'var(--glass-border)',
+              background: 'rgba(255,255,255,0.03)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="grid gap-3 md:grid-cols-2">
+              <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+                  Source
+                </p>
+                <p className="mt-2 break-all text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  {originalUrl ? (
+                    <a href={originalUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>
+                      {originalUrl}
+                    </a>
+                  ) : (
+                    'URL not provided by backend yet'
+                  )}
+                </p>
+              </div>
+
+              <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)' }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.2em]" style={{ color: 'var(--text-muted)' }}>
+                  Tracking status
+                </p>
+                <div className="mt-2 space-y-2 text-sm" style={{ color: 'var(--text-secondary)' }}>
+                  <p>Current price: {currentPrice ? `${currentPrice.toLocaleString()} EGP` : 'Pending scrape'}</p>
+                  <p>Status: {item.product.in_stock ? 'In stock' : 'Out of stock'}</p>
+                  <p>Updated: {item.product.last_scraped_at ? timeAgo(item.product.last_scraped_at) : 'Not scraped yet'}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl border p-4" style={{ borderColor: 'var(--glass-border)' }}>
+              <div className="mb-4 flex items-center gap-2">
+                <h4 className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+                  Price history
+                </h4>
+                <span
+                  className="rounded-md px-2 py-0.5 text-xs font-semibold"
+                  style={{
+                    background: 'rgba(56,189,248,0.1)',
+                    border: '1px solid rgba(56,189,248,0.22)',
+                    color: 'var(--blue)',
+                  }}
+                >
+                  30 days
+                </span>
+              </div>
+              {loadingChart ? (
+                <div
+                  className="flex h-[260px] items-center justify-center text-sm"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Loading chart...
+                </div>
+              ) : (
+                <PriceChart data={chartData} />
+              )}
+            </div>
+
+            <div className="mt-4">
+              {loadingRules ? (
+                <div
+                  className="rounded-2xl border p-4 text-sm"
+                  style={{ borderColor: 'var(--glass-border)', color: 'var(--text-muted)' }}
+                >
+                  Loading alert rules...
+                </div>
+              ) : (
+                <AlertRulesPanel rules={rules} trackedItemId={item.id} />
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {toast && (

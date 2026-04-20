@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { proxyToNest } from '@/lib/proxy';
 import { MOCK_TRACKED_ITEMS, MOCK_PRODUCTS } from '@/lib/mockData';
+import { shouldUseRealApi } from '@/lib/runtime-mode';
 
-const USE_REAL_API = !!process.env.API_URL;
+const USE_REAL_API = shouldUseRealApi();
 
 export async function GET(request: NextRequest) {
   if (USE_REAL_API) {
@@ -49,6 +50,7 @@ export async function POST(request: NextRequest) {
         id: `prod-new-${Date.now()}`,
         title: 'New Tracked Product (scraping...)',
         store: 'Unknown',
+        original_url: url,
         last_price: null,
         in_stock: null,
         last_scraped_at: null,
