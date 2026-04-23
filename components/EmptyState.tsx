@@ -23,7 +23,7 @@ function StoreLogo({
         height: 34,
         borderRadius: 6,
         flexShrink: 0,
-        background: 'rgba(255,255,255,0.94)',
+        background: 'var(--surface-elevated)',
         border: `1px solid ${border}`,
         display: 'flex',
         alignItems: 'center',
@@ -82,7 +82,7 @@ const STEPS = [
     num: '02',
     icon: <IconImage src="/icons/paste.png" alt="Paste" size={22} />,
     title: 'Paste the URL',
-    desc: 'Copy the link and click "+ Track Product" - we will do the rest.',
+    desc: 'Copy the link and click "+ Track Product" - Sentinel will handle the rest.',
     color: 'var(--blue)',
     glow: 'rgba(56,189,248,0.12)',
   },
@@ -116,9 +116,11 @@ export function EmptyState({ name }: { name?: string }) {
           </h2>
         )}
         <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-          You haven&apos;t tracked any products yet. Here&apos;s how to get started:
+          Start by adding your first product, then Sentinel will keep watching the price for you.
         </p>
-        <AddProductButton />
+        <div className="flex justify-center">
+          <AddProductButton />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -186,3 +188,4 @@ export function EmptyState({ name }: { name?: string }) {
     </div>
   );
 }
+

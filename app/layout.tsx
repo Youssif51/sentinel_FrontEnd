@@ -1,9 +1,14 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "SeerPrice — Price Tracker",
-  description: "Track product prices across Egyptian online stores",
+  title: 'Sentinel',
+  description: 'Track products, price history, and alerts across Egyptian online stores',
+  icons: {
+    icon: '/brand/sentinel-logo.png',
+    shortcut: '/brand/sentinel-logo.png',
+    apple: '/brand/sentinel-logo.png',
+  },
 };
 
 export default function RootLayout({

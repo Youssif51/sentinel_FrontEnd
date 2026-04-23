@@ -11,13 +11,21 @@ const PUBLIC_PATHS = [
   '/api/auth/logout',
 ];
 
+const PUBLIC_PREFIXES = [
+  '/_next',
+  '/brand',
+  '/icons',
+  '/stores',
+  '/favicon',
+];
+
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
     PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/favicon');
+    PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    /\.(png|jpg|jpeg|gif|webp|svg|ico|css|js|map|txt)$/i.test(pathname);
 
   if (isPublic) {
     return NextResponse.next();

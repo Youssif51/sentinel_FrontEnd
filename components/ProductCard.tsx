@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { timeAgo } from '@/lib/utils';
@@ -60,7 +60,7 @@ export function ProductCard({
   item: TrackedItem;
   onDeleted?: () => void;
 }) {
-  const [confirming, setConfirming] = useState(false);
+  const [deletePlan, setDeletePlan] = useState<{ ruleIds: string[]; message: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [rules, setRules] = useState<AlertRule[]>([]);
@@ -80,6 +80,11 @@ export function ProductCard({
   const isPriceDrop = changePercent !== null && changePercent < 0;
   const originalUrl = item.product.original_url ?? item.product.url;
 
+  function ruleBelongsToItem(rule: AlertRule) {
+    const owner = rule.tracked_item_id ?? rule.trackedItemId ?? rule.productId;
+    return owner === item.id || owner === item.product.id || owner === `track-${item.product.id}`;
+  }
+
   useEffect(() => {
     if (!expanded) return;
     let cancelled = false;
@@ -90,12 +95,7 @@ export function ProductCard({
         const res = await fetch(`/api/alert-rules?trackedItemId=${item.id}&productId=${item.product.id}`);
         const data = await res.json().catch(() => []);
         if (!cancelled) {
-          const filtered = Array.isArray(data)
-            ? data.filter((rule) => {
-                const owner = rule.tracked_item_id ?? rule.trackedItemId ?? rule.productId;
-                return owner === item.id || owner === item.product.id || owner === `track-${item.product.id}`;
-              })
-            : [];
+          const filtered = Array.isArray(data) ? data.filter(ruleBelongsToItem) : [];
           setRules(filtered);
         }
       } catch {
@@ -144,36 +144,95 @@ export function ProductCard({
     };
   }, [expanded, item.id]);
 
-  async function handleDelete(e: React.MouseEvent) {
-    e.stopPropagation();
-    if (!confirming) {
-      setConfirming(true);
-      return;
+  async function loadRulesForDelete() {
+    if (rules.length > 0) {
+      return rules.map((rule) => rule.id);
     }
 
+    const res = await fetch(`/api/alert-rules?trackedItemId=${item.id}&productId=${item.product.id}`);
+    const data = await res.json().catch(() => []);
+
+    if (!res.ok || !Array.isArray(data)) {
+      throw new Error('Could not check alert rules.');
+    }
+
+    return data.filter(ruleBelongsToItem).map((rule) => rule.id);
+  }
+
+  async function removeProductWithRules(ruleIds: string[]) {
     setDeleting(true);
     try {
+      for (const ruleId of ruleIds) {
+        const ruleRes = await fetch(`/api/alert-rules?id=${ruleId}`, { method: 'DELETE' });
+        if (!ruleRes.ok) {
+          throw new Error('Failed to remove alert rules first.');
+        }
+      }
+
       const res = await fetch(`/api/tracked-items?id=${item.id}`, { method: 'DELETE' });
       if (res.ok) {
+        setRules([]);
         setToast({ type: 'success', title: 'Product removed', message: item.product.title });
         if (onDeleted) {
           setTimeout(onDeleted, 400);
         }
       } else {
-        setToast({ type: 'error', title: 'Failed to remove', message: 'Please try again.' });
-        setDeleting(false);
-        setConfirming(false);
+        const data = await res.json().catch(() => null);
+        setToast({
+          type: 'error',
+          title: 'Failed to remove',
+          message: data?.message ?? 'Please try again.',
+        });
       }
-    } catch {
-      setToast({ type: 'error', title: 'Network error', message: 'Check your connection.' });
+    } catch (error) {
+      setToast({
+        type: 'error',
+        title: 'Could not remove product',
+        message: error instanceof Error ? error.message : 'Check your connection and try again.',
+      });
+    } finally {
       setDeleting(false);
-      setConfirming(false);
+      setDeletePlan(null);
+    }
+  }
+
+  async function handleDelete(e: React.MouseEvent) {
+    e.stopPropagation();
+
+    if (deletePlan) {
+      await removeProductWithRules(deletePlan.ruleIds);
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      const ruleIds = await loadRulesForDelete();
+      if (ruleIds.length === 0) {
+        await removeProductWithRules([]);
+        return;
+      }
+
+      setDeletePlan({
+        ruleIds,
+        message:
+          ruleIds.length === 1
+            ? 'This product has 1 alert rule. Remove the rule and the product?'
+            : `This product has ${ruleIds.length} alert rules. Remove them and the product?`,
+      });
+    } catch (error) {
+      setToast({
+        type: 'error',
+        title: 'Could not check alert rules',
+        message: error instanceof Error ? error.message : 'Please try again.',
+      });
+    } finally {
+      setDeleting(false);
     }
   }
 
   function handleCancel(e: React.MouseEvent) {
     e.stopPropagation();
-    setConfirming(false);
+    setDeletePlan(null);
   }
 
   return (
@@ -181,7 +240,7 @@ export function ProductCard({
       <div
         className="glass border-glow-animated cursor-pointer"
         style={{ padding: '14px 16px' }}
-        onClick={() => !confirming && setExpanded((value) => !value)}
+        onClick={() => !deletePlan && setExpanded((value) => !value)}
       >
         <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', marginBottom: '10px' }}>
           <h3
@@ -219,10 +278,11 @@ export function ProductCard({
             </p>
           </div>
 
-          {!confirming && (
+          {!deletePlan && (
             <button
               onClick={handleDelete}
               title="Remove product"
+              disabled={deleting}
               style={{
                 flexShrink: 0,
                 padding: '5px',
@@ -230,13 +290,14 @@ export function ProductCard({
                 background: 'rgba(251,113,133,0.08)',
                 border: '1px solid rgba(251,113,133,0.18)',
                 color: 'rgba(251,113,133,0.55)',
-                cursor: 'pointer',
+                cursor: deleting ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 transition: 'background 0.15s, color 0.15s, border-color 0.15s',
                 marginTop: '1px',
               }}
               onMouseEnter={e => {
+                if (deleting) return;
                 e.currentTarget.style.background = 'rgba(251,113,133,0.18)';
                 e.currentTarget.style.color = 'var(--rose)';
                 e.currentTarget.style.borderColor = 'rgba(251,113,133,0.35)';
@@ -259,9 +320,9 @@ export function ProductCard({
               padding: '2px 8px',
               borderRadius: '6px',
               fontWeight: 500,
-              background: 'rgba(34,211,238,0.08)',
-              border: '1px solid rgba(34,211,238,0.2)',
-              color: 'var(--cyan)',
+              background: 'rgba(15,23,42,0.05)',
+              border: '1px solid rgba(15,23,42,0.08)',
+              color: 'var(--text-primary)',
               whiteSpace: 'nowrap',
             }}
           >
@@ -276,7 +337,7 @@ export function ProductCard({
 
           <div style={{ flex: 1 }} />
 
-          {changePercent !== null && !confirming && (
+          {changePercent !== null && !deletePlan && (
             <span
               style={{
                 fontSize: '11px',
@@ -285,15 +346,15 @@ export function ProductCard({
                 borderRadius: '6px',
                 whiteSpace: 'nowrap',
                 ...(isPriceDrop
-                  ? { background: 'rgba(74,222,128,0.1)', color: 'var(--emerald)', border: '1px solid rgba(74,222,128,0.25)' }
-                  : { background: 'rgba(251,113,133,0.1)', color: 'var(--rose)', border: '1px solid rgba(251,113,133,0.25)' }),
+                  ? { background: 'rgba(22,163,74,0.1)', color: 'var(--emerald)', border: '1px solid rgba(22,163,74,0.2)' }
+                  : { background: 'rgba(220,38,38,0.1)', color: 'var(--rose)', border: '1px solid rgba(220,38,38,0.18)' }),
               }}
             >
               {changePercent > 0 ? '+' : ''}{changePercent}%
             </span>
           )}
 
-          {!confirming && (
+          {!deletePlan && (
             <span
               className={item.product.in_stock ? 'badge-instock' : 'badge-outofstock'}
               style={{ fontSize: '11px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}
@@ -302,9 +363,9 @@ export function ProductCard({
             </span>
           )}
 
-          {confirming && (
+          {deletePlan && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }} onClick={e => e.stopPropagation()}>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Remove this product?</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{deletePlan.message}</span>
               <button
                 onClick={handleCancel}
                 style={{
@@ -312,8 +373,8 @@ export function ProductCard({
                   padding: '3px 10px',
                   borderRadius: '8px',
                   fontWeight: 500,
-                  background: 'rgba(255,255,255,0.06)',
-                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'rgba(255,255,255,0.6)',
+                  border: '1px solid rgba(15,23,42,0.08)',
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
                   whiteSpace: 'nowrap',
@@ -329,8 +390,8 @@ export function ProductCard({
                   padding: '3px 10px',
                   borderRadius: '8px',
                   fontWeight: 600,
-                  background: 'rgba(251,113,133,0.15)',
-                  border: '1px solid rgba(251,113,133,0.35)',
+                  background: 'rgba(220,38,38,0.12)',
+                  border: '1px solid rgba(220,38,38,0.28)',
                   color: 'var(--rose)',
                   cursor: deleting ? 'not-allowed' : 'pointer',
                   display: 'flex',
@@ -351,7 +412,7 @@ export function ProductCard({
             className="mt-4 rounded-2xl border p-4"
             style={{
               borderColor: 'var(--glass-border)',
-              background: 'rgba(255,255,255,0.03)',
+              background: 'var(--panel-subtle)',
             }}
             onClick={e => e.stopPropagation()}
           >
@@ -362,7 +423,7 @@ export function ProductCard({
                 </p>
                 <p className="mt-2 break-all text-sm" style={{ color: 'var(--text-secondary)' }}>
                   {originalUrl ? (
-                    <a href={originalUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>
+                    <a href={originalUrl} target="_blank" rel="noreferrer" style={{ color: '#b91c1c' }}>
                       {originalUrl}
                     </a>
                   ) : (
@@ -391,9 +452,9 @@ export function ProductCard({
                 <span
                   className="rounded-md px-2 py-0.5 text-xs font-semibold"
                   style={{
-                    background: 'rgba(56,189,248,0.1)',
-                    border: '1px solid rgba(56,189,248,0.22)',
-                    color: 'var(--blue)',
+                    background: 'rgba(15,23,42,0.05)',
+                    border: '1px solid rgba(15,23,42,0.08)',
+                    color: 'var(--text-primary)',
                   }}
                 >
                   30 days
@@ -433,3 +494,4 @@ export function ProductCard({
     </>
   );
 }
+

@@ -62,7 +62,7 @@ export function UserMenu({
           height: 42,
           borderRadius: '999px',
           padding: 0,
-          background: 'rgba(255,255,255,0.96)',
+          background: 'var(--surface-elevated)',
           borderColor: hovered || open ? 'rgba(34,211,238,0.45)' : 'var(--glass-border)',
           boxShadow: hovered || open
             ? '0 0 0 3px rgba(34,211,238,0.12), 0 10px 24px rgba(0,0,0,0.22)'
@@ -99,7 +99,7 @@ export function UserMenu({
           <div
             className="mb-2 rounded-xl px-3 py-3"
             style={{
-              background: 'rgba(255,255,255,0.04)',
+              background: 'var(--surface-soft)',
               border: '1px solid rgba(148, 163, 184, 0.14)',
             }}
           >
@@ -147,3 +147,4 @@ export function UserMenu({
     </div>
   );
 }
+

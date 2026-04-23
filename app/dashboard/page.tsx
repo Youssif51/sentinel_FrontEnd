@@ -1,4 +1,4 @@
-import { headers } from 'next/headers';
+﻿import { headers } from 'next/headers';
 import { TrackedList } from '@/components/TrackedList';
 import { EmptyState } from '@/components/EmptyState';
 import { AddProductButton } from '@/components/AddProductButton';
@@ -7,6 +7,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { WelcomeModal } from '@/components/WelcomeModal';
 import { ReferralCard } from '@/components/ReferralCard';
 import { UserMenu } from '@/components/UserMenu';
+import { BrandMark } from '@/components/BrandMark';
 
 export const dynamic = 'force-dynamic';
 
@@ -110,22 +111,22 @@ export default async function DashboardPage() {
       <nav
         className="page-content sticky top-0 z-50"
         style={{
-          background: 'rgba(6, 9, 16, 0.72)',
-          backdropFilter: 'blur(20px)',
-          borderBottom: '1px solid var(--glass-border)',
+          background: 'var(--nav-surface)',
+          backdropFilter: 'blur(24px)',
+          borderBottom: '1px solid var(--nav-border)',
         }}
       >
         <div className="mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          <span className="shrink-0 text-base font-black gradient-text sm:text-lg">SeerPrice</span>
+          <BrandMark size="sm" showTagline={false} />
 
           <div className="min-w-0 flex items-center gap-2 sm:gap-3">
             {plan === 'FREE' ? (
               <span
                 className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold sm:px-3"
                 style={{
-                  background: 'rgba(34,211,238,0.08)',
-                  border: '1px solid rgba(34,211,238,0.2)',
-                  color: 'var(--cyan)',
+                  background: 'rgba(15,23,42,0.05)',
+                  border: '1px solid rgba(15,23,42,0.08)',
+                  color: 'var(--text-primary)',
                 }}
               >
                 Limit {totalLimit}
@@ -148,7 +149,7 @@ export default async function DashboardPage() {
         <div className="mb-1 flex items-start justify-between gap-3">
           <div>
             {firstName && (
-              <p className="mb-1 text-sm font-semibold" style={{ color: 'var(--cyan)' }}>
+              <p className="mb-1 text-sm font-semibold" style={{ color: '#b91c1c' }}>
                 Hello, {firstName}!
               </p>
             )}
@@ -171,3 +172,4 @@ export default async function DashboardPage() {
     </div>
   );
 }
+

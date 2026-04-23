@@ -30,19 +30,19 @@ export function ReferralCard({ summary }: { summary: ReferralSummary | null }) {
         </div>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-soft)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Referrals</p>
             <p className="mt-1 text-xl font-bold">{summary.successfulReferrals}</p>
           </div>
-          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-soft)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Bonus Slots</p>
             <p className="mt-1 text-xl font-bold">{summary.bonusTrackingSlots}</p>
           </div>
-          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-soft)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Base Limit</p>
             <p className="mt-1 text-xl font-bold">{summary.baseTrackingLimit}</p>
           </div>
-          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'rgba(255,255,255,0.03)' }}>
+          <div className="rounded-2xl border p-3" style={{ borderColor: 'var(--glass-border)', background: 'var(--surface-soft)' }}>
             <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Total Limit</p>
             <p className="mt-1 text-xl font-bold">{summary.totalTrackingLimit}</p>
           </div>
@@ -56,7 +56,7 @@ export function ReferralCard({ summary }: { summary: ReferralSummary | null }) {
             {summary.bonusTrackingSlots} / {summary.maxBonusTrackingSlots}
           </span>
         </div>
-        <div className="h-2 w-full rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+        <div className="h-2 w-full rounded-full" style={{ background: 'var(--progress-track)' }}>
           <div
             className="h-2 rounded-full transition-all duration-500"
             style={{
@@ -69,3 +69,4 @@ export function ReferralCard({ summary }: { summary: ReferralSummary | null }) {
     </section>
   );
 }
+

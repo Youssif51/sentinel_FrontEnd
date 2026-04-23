@@ -123,7 +123,7 @@ export function TrackedList({
               </Link>
             )}
           </div>
-          <div className="h-1.5 w-full rounded-full" style={{ background: 'rgba(255,255,255,0.07)' }}>
+          <div className="h-1.5 w-full rounded-full" style={{ background: 'var(--progress-track)' }}>
             <div
               className="h-1.5 rounded-full transition-all duration-500"
               style={{
@@ -151,3 +151,4 @@ export function TrackedList({
     </div>
   );
 }
+

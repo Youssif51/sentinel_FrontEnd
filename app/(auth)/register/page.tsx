@@ -1,9 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { AuroraBg } from '@/components/AuroraBg';
+import { BrandMark } from '@/components/BrandMark';
 import { SocialAuthButtons } from '@/components/SocialAuthButtons';
 
 function getPasswordStrength(p: string) {
@@ -81,11 +82,8 @@ export default function RegisterPage() {
       <AuroraBg />
 
       <div className="page-content w-full max-w-md">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-4xl font-black gradient-text">SeerPrice</h1>
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-            Track gaming gear and tech prices across Egypt
-          </p>
+        <div className="mb-8 flex justify-center">
+          <BrandMark size="lg" />
         </div>
 
         <div className="glass-strong p-7" style={{ borderRadius: '20px' }}>

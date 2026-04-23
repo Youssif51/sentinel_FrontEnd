@@ -22,7 +22,7 @@ function StoreLogo({
         height: 38,
         borderRadius: 7,
         flexShrink: 0,
-        background: 'rgba(255,255,255,0.94)',
+        background: 'var(--surface-elevated)',
         border: `1px solid ${border}`,
         display: 'flex',
         alignItems: 'center',
@@ -97,8 +97,8 @@ export function WelcomeModal() {
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center px-4 py-6"
       style={{
-        background: 'rgba(6,9,16,0.7)',
-        backdropFilter: 'blur(10px)',
+        background: 'rgba(15,18,28,0.58)',
+        backdropFilter: 'blur(18px)',
         animation: leaving
           ? 'toast-out 0.38s ease-in forwards'
           : 'toast-in 0.5s cubic-bezier(0.34,1.28,0.64,1) forwards',
@@ -119,15 +119,23 @@ export function WelcomeModal() {
           className="px-7 pt-7 pb-5 text-center"
           style={{
             borderBottom: '1px solid var(--glass-border)',
-            background: 'linear-gradient(160deg, rgba(34,211,238,0.06) 0%, transparent 100%)',
+            background: 'linear-gradient(160deg, rgba(127,29,29,0.05) 0%, transparent 100%)',
           }}
         >
-          <div className="text-4xl mb-3">👋</div>
-          <h2 className="text-2xl font-black mb-2 gradient-text" style={{ letterSpacing: '-0.02em' }}>
-            Welcome to SeerPrice
+          <div className="mb-4 flex justify-center">
+            <img
+              src="/brand/sentinel-logo.png"
+              alt="Sentinel logo"
+              width={76}
+              height={76}
+              className="object-contain drop-shadow-[0_20px_48px_rgba(0,0,0,0.22)]"
+            />
+          </div>
+          <h2 className="text-2xl font-black mb-2" style={{ letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+            Welcome to Sentinel
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Track product prices across Egyptian stores and get notified the moment a price drops.
+            Track products across Egyptian stores and stay ahead of meaningful price changes.
           </p>
         </div>
 
@@ -151,8 +159,8 @@ export function WelcomeModal() {
                     style={{
                       width: 36,
                       height: 36,
-                      background: 'rgba(34,211,238,0.08)',
-                      border: '1px solid rgba(34,211,238,0.18)',
+                      background: 'rgba(127,29,29,0.08)',
+                      border: '1px solid rgba(127,29,29,0.12)',
                       borderRadius: 10,
                       display: 'flex',
                       alignItems: 'center',
@@ -203,15 +211,13 @@ export function WelcomeModal() {
           </div>
         </div>
 
-        <div className="px-7 pb-7 pt-1">
-          <button onClick={dismiss} className="btn-neon w-full py-3.5 text-sm font-semibold">
-            Start Tracking Prices →
+        <div className="px-7 pb-7 pt-1 flex justify-center">
+          <button onClick={dismiss} className="btn-neon px-4 py-2.5 text-sm font-semibold">
+            + Track Product
           </button>
-          <p className="text-center text-xs mt-3" style={{ color: 'var(--text-muted)' }}>
-            This won&apos;t appear again after you close it.
-          </p>
         </div>
       </div>
     </div>
   );
 }
+

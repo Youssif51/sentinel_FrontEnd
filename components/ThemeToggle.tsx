@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 export function ThemeToggle() {
   const [dark, setDark] = useState(true);
   const [hovered, setHovered] = useState(false);
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem('theme');
     const isDark = stored !== 'light';
     setDark(isDark);
     document.documentElement.classList.toggle('light', !isDark);
+    setReady(true);
   }, []);
 
   function toggle() {
@@ -22,42 +24,44 @@ export function ThemeToggle() {
 
   return (
     <button
+      type="button"
       onClick={toggle}
-      aria-label="Toggle theme"
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={dark ? 'Light mode' : 'Dark mode'}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      className="btn-icon-circle"
       style={{
-        width: 36,
-        height: 36,
+        width: 38,
+        height: 38,
         borderRadius: '50%',
+        background: 'var(--surface-elevated)',
         border: hovered
           ? '1px solid rgba(34,211,238,0.42)'
-          : dark
-            ? '1px solid rgba(148,163,184,0.24)'
-            : '1px solid var(--glass-border)',
-        background: dark ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255,255,255,0.92)',
-        backdropFilter: 'blur(12px)',
+          : '1px solid var(--glass-border)',
+        boxShadow: hovered
+          ? '0 0 0 3px rgba(34,211,238,0.12), 0 10px 24px rgba(0,0,0,0.18)'
+          : 'inset 0 1px 0 var(--glass-shine)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        cursor: 'pointer',
-        transition: 'background 0.2s, border-color 0.2s, transform 0.2s',
-        boxShadow: hovered
-          ? '0 0 0 3px rgba(34,211,238,0.12), 0 8px 22px rgba(0,0,0,0.18)'
-          : 'inset 0 1px 0 var(--glass-shine)',
+        cursor: ready ? 'pointer' : 'default',
+        transition: 'background 0.25s, border-color 0.2s, transform 0.2s, box-shadow 0.2s',
+        transform: hovered ? 'scale(1.06) rotate(8deg)' : 'scale(1) rotate(0deg)',
+        opacity: ready ? 1 : 0.9,
         flexShrink: 0,
-        transform: hovered ? 'scale(1.08) rotate(10deg)' : 'scale(1) rotate(0deg)',
       }}
     >
       <img
         src={dark ? '/icons/light-mode.png' : '/icons/dark-mode-new.png'}
-        alt={dark ? 'Dark mode' : 'Light mode'}
+        alt={dark ? 'Light mode icon' : 'Dark mode icon'}
         width={20}
         height={20}
         style={{
           objectFit: 'contain',
-          opacity: dark ? 1 : 0.95,
-          filter: dark ? 'none' : 'none',
+          opacity: 0.98,
+          transition: 'transform 0.2s ease, opacity 0.2s ease',
+          transform: hovered ? 'scale(1.04)' : 'scale(1)',
         }}
       />
     </button>
