@@ -24,6 +24,7 @@ export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const isPublic =
+    pathname === '/' ||
     PUBLIC_PATHS.some((path) => pathname.startsWith(path)) ||
     PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
     /\.(png|jpg|jpeg|gif|webp|svg|ico|css|js|map|txt)$/i.test(pathname);
