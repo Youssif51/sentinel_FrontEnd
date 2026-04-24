@@ -135,7 +135,7 @@ export function WelcomeModal() {
             Welcome to Sentinel
           </h2>
           <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Track products across Egyptian stores and stay ahead of meaningful price changes.
+            Track product prices from Egyptian stores, watch price history, and get alerts when a price drops.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export function WelcomeModal() {
 
         <div className="px-7 pb-7 pt-1 flex justify-center">
           <button onClick={dismiss} className="btn-neon px-4 py-2.5 text-sm font-semibold">
-            + Track Product
+            Start Tracking
           </button>
         </div>
       </div>

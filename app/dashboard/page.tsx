@@ -225,7 +225,7 @@ export default async function DashboardPage() {
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               {isLoggedIn
                 ? 'Tap any item to expand details, chart, and alert rules'
-                : 'Explore the flow first, then log in to add products, save alerts, and start tracking for real.'}
+                : 'Track prices from Egyptian stores in one place. Paste a product link, watch price changes, and log in when you are ready to save products and alerts.'}
             </p>
           </div>
           <AddProductButton requiresAuth={!isLoggedIn} />

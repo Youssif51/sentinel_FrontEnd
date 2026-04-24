@@ -74,7 +74,7 @@ const STEPS = [
     num: '01',
     icon: <IconImage src="/icons/copy.png" alt="Copy" size={22} />,
     title: 'Open a product page',
-    desc: 'Go to any supported store and find the product you want to track.',
+    desc: 'Choose a product from a supported Egyptian store and copy its page link.',
     color: 'var(--cyan)',
     glow: 'rgba(34,211,238,0.12)',
   },
@@ -82,7 +82,7 @@ const STEPS = [
     num: '02',
     icon: <IconImage src="/icons/paste.png" alt="Paste" size={22} />,
     title: 'Paste the URL',
-    desc: 'Copy the link and click "+ Track Product" - Sentinel will handle the rest.',
+    desc: 'Paste the product link and Sentinel starts tracking price changes for you.',
     color: 'var(--blue)',
     glow: 'rgba(56,189,248,0.12)',
   },
@@ -90,7 +90,7 @@ const STEPS = [
     num: '03',
     icon: <IconImage src="/icons/alert.png" alt="Alert" size={22} />,
     title: 'Set a price alert',
-    desc: 'Define a target price or drop percent and get notified by email instantly.',
+    desc: 'Choose a target price or drop percentage and get notified when the price moves.',
     color: 'var(--emerald)',
     glow: 'rgba(74,222,128,0.12)',
   },
@@ -122,13 +122,13 @@ export function EmptyState({
           </h2>
         ) : requiresAuth ? (
           <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
-            Explore Sentinel in preview mode
+            Track prices from Egyptian stores
           </h2>
         ) : null}
         <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
           {requiresAuth
-            ? 'See how tracking works, browse supported stores, and log in whenever you are ready to add your first product.'
-            : 'Start by adding your first product, then Sentinel will keep watching the price for you.'}
+            ? 'Paste any supported product link to monitor price changes and get alerts later. Browse the flow first, then log in when you are ready to save your tracked products.'
+            : 'Paste your first product link to start tracking its price, history, and alerts in one place.'}
         </p>
         <div className="flex justify-center">
           <AddProductButton requiresAuth={requiresAuth} />
