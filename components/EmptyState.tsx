@@ -96,7 +96,13 @@ const STEPS = [
   },
 ];
 
-export function EmptyState({ name }: { name?: string }) {
+export function EmptyState({
+  name,
+  requiresAuth = false,
+}: {
+  name?: string;
+  requiresAuth?: boolean;
+}) {
   return (
     <div className="space-y-4 animate-fade-up">
       <div className="glass p-6 text-center">
@@ -110,16 +116,22 @@ export function EmptyState({ name }: { name?: string }) {
         >
           <IconImage src="/icons/handshake.png" alt="Handshake" size={34} />
         </div>
-        {name && (
+        {name ? (
           <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
             Hello, {name}!
           </h2>
-        )}
+        ) : requiresAuth ? (
+          <h2 className="text-xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>
+            Explore Sentinel in preview mode
+          </h2>
+        ) : null}
         <p className="text-sm mb-5" style={{ color: 'var(--text-secondary)' }}>
-          Start by adding your first product, then Sentinel will keep watching the price for you.
+          {requiresAuth
+            ? 'See how tracking works, browse supported stores, and log in whenever you are ready to add your first product.'
+            : 'Start by adding your first product, then Sentinel will keep watching the price for you.'}
         </p>
         <div className="flex justify-center">
-          <AddProductButton />
+          <AddProductButton requiresAuth={requiresAuth} />
         </div>
       </div>
 

@@ -1,5 +1,6 @@
-﻿import { headers } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { TrackedList } from '@/components/TrackedList';
+import Link from 'next/link';
 import { EmptyState } from '@/components/EmptyState';
 import { AddProductButton } from '@/components/AddProductButton';
 import { AuroraBg } from '@/components/AuroraBg';
@@ -55,6 +56,10 @@ function formatFirstName(email: string) {
 }
 
 async function getTrackedItems(cookie: string): Promise<TrackedResponse> {
+  if (!cookie) {
+    return { items: [], plan: 'FREE', count: 0 };
+  }
+
   try {
     const res = await fetch(`${APP_URL}/api/tracked-items`, {
       cache: 'no-store',
@@ -68,6 +73,10 @@ async function getTrackedItems(cookie: string): Promise<TrackedResponse> {
 }
 
 async function getReferralSummary(cookie: string): Promise<ReferralSummary | null> {
+  if (!cookie) {
+    return null;
+  }
+
   try {
     const res = await fetch(`${APP_URL}/api/auth/referral-summary`, {
       cache: 'no-store',
@@ -81,6 +90,10 @@ async function getReferralSummary(cookie: string): Promise<ReferralSummary | nul
 }
 
 async function getCurrentUser(cookie: string): Promise<CurrentUser | null> {
+  if (!cookie) {
+    return null;
+  }
+
   try {
     const res = await fetch(`${APP_URL}/api/auth/me`, {
       cache: 'no-store',
@@ -94,19 +107,22 @@ async function getCurrentUser(cookie: string): Promise<CurrentUser | null> {
 }
 
 export default async function DashboardPage() {
-  const cookie = (await headers()).get('cookie') ?? '';
+  const cookieStore = await cookies();
+  const session = cookieStore.get('session')?.value;
+  const cookie = session ? (await headers()).get('cookie') ?? '' : '';
   const [{ items, plan }, referralSummary, currentUser] = await Promise.all([
     getTrackedItems(cookie),
     getReferralSummary(cookie),
     getCurrentUser(cookie),
   ]);
+  const isLoggedIn = Boolean(currentUser?.email);
   const totalLimit = referralSummary?.totalTrackingLimit ?? 5;
   const firstName = currentUser?.email ? formatFirstName(currentUser.email) : '';
 
   return (
     <div className="min-h-screen">
       <AuroraBg />
-      <WelcomeModal />
+      {isLoggedIn ? <WelcomeModal /> : null}
 
       <nav
         className="page-content sticky top-0 z-50"
@@ -120,7 +136,7 @@ export default async function DashboardPage() {
           <BrandMark size="sm" showTagline={false} />
 
           <div className="min-w-0 flex items-center gap-2 sm:gap-3">
-            {plan === 'FREE' ? (
+            {isLoggedIn && plan === 'FREE' ? (
               <span
                 className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold sm:px-3"
                 style={{
@@ -131,10 +147,14 @@ export default async function DashboardPage() {
               >
                 Limit {totalLimit}
               </span>
-            ) : (
+            ) : isLoggedIn ? (
               <span className="shrink-0 text-xs font-semibold" style={{ color: 'var(--emerald)' }}>
                 Pro
               </span>
+            ) : (
+              <Link href="/login?next=/dashboard" className="btn-neon px-4 py-2 text-sm">
+                Log In
+              </Link>
             )}
 
             <ThemeToggle />
@@ -144,7 +164,7 @@ export default async function DashboardPage() {
       </nav>
 
       <div className="page-content mx-auto flex max-w-4xl flex-col gap-5 px-4 py-6 sm:px-6 sm:py-8">
-        <ReferralCard summary={referralSummary} />
+        {isLoggedIn ? <ReferralCard summary={referralSummary} /> : null}
 
         <div className="mb-1 flex items-start justify-between gap-3">
           <div>
@@ -153,18 +173,32 @@ export default async function DashboardPage() {
                 Hello, {firstName}!
               </p>
             )}
+            {!isLoggedIn && (
+              <p
+                className="mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
+                style={{
+                  color: '#f87171',
+                  background: 'rgba(185,28,28,0.1)',
+                  border: '1px solid rgba(248,113,113,0.18)',
+                }}
+              >
+                Preview mode
+              </p>
+            )}
             <h1 className="mb-1 text-xl font-bold sm:text-2xl" style={{ color: 'var(--text-primary)' }}>
-              My Tracked Products
+              {isLoggedIn ? 'My Tracked Products' : 'See how Sentinel works'}
             </h1>
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
-              Tap any item to expand details, chart, and alert rules
+              {isLoggedIn
+                ? 'Tap any item to expand details, chart, and alert rules'
+                : 'Explore the flow first, then log in to add products, save alerts, and start tracking for real.'}
             </p>
           </div>
-          <AddProductButton />
+          <AddProductButton requiresAuth={!isLoggedIn} />
         </div>
 
         {items.length === 0 ? (
-          <EmptyState name={firstName} />
+          <EmptyState name={firstName} requiresAuth={!isLoggedIn} />
         ) : (
           <TrackedList initialItems={items} plan={plan} totalLimit={totalLimit} />
         )}
@@ -172,4 +206,5 @@ export default async function DashboardPage() {
     </div>
   );
 }
+
 
