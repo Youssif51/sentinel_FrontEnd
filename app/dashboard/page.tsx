@@ -12,8 +12,6 @@ import { BrandMark } from '@/components/BrandMark';
 
 export const dynamic = 'force-dynamic';
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
-
 interface TrackedResponse {
   items: Array<{
     id: string;
@@ -49,19 +47,34 @@ interface CurrentUser {
   authProvider?: string;
 }
 
+function readEmailFromSessionToken(token?: string) {
+  if (!token) return '';
+
+  try {
+    const [, payload] = token.split('.');
+    if (!payload) return '';
+
+    const decoded = Buffer.from(payload, 'base64url').toString('utf8');
+    const data = JSON.parse(decoded) as { email?: string; sub?: string };
+    return typeof data.email === 'string' ? data.email : '';
+  } catch {
+    return '';
+  }
+}
+
 function formatFirstName(email: string) {
   const raw = email.split('@')[0].replace(/[._-]+/g, ' ').trim();
   const firstName = raw.split(/\s+/)[0] ?? '';
   return firstName.charAt(0).toUpperCase() + firstName.slice(1);
 }
 
-async function getTrackedItems(cookie: string): Promise<TrackedResponse> {
+async function getTrackedItems(cookie: string, appUrl: string): Promise<TrackedResponse> {
   if (!cookie) {
     return { items: [], plan: 'FREE', count: 0 };
   }
 
   try {
-    const res = await fetch(`${APP_URL}/api/tracked-items`, {
+    const res = await fetch(`${appUrl}/api/tracked-items`, {
       cache: 'no-store',
       headers: cookie ? { cookie } : undefined,
     });
@@ -72,13 +85,13 @@ async function getTrackedItems(cookie: string): Promise<TrackedResponse> {
   }
 }
 
-async function getReferralSummary(cookie: string): Promise<ReferralSummary | null> {
+async function getReferralSummary(cookie: string, appUrl: string): Promise<ReferralSummary | null> {
   if (!cookie) {
     return null;
   }
 
   try {
-    const res = await fetch(`${APP_URL}/api/auth/referral-summary`, {
+    const res = await fetch(`${appUrl}/api/auth/referral-summary`, {
       cache: 'no-store',
       headers: cookie ? { cookie } : undefined,
     });
@@ -89,13 +102,13 @@ async function getReferralSummary(cookie: string): Promise<ReferralSummary | nul
   }
 }
 
-async function getCurrentUser(cookie: string): Promise<CurrentUser | null> {
+async function getCurrentUser(cookie: string, appUrl: string): Promise<CurrentUser | null> {
   if (!cookie) {
     return null;
   }
 
   try {
-    const res = await fetch(`${APP_URL}/api/auth/me`, {
+    const res = await fetch(`${appUrl}/api/auth/me`, {
       cache: 'no-store',
       headers: cookie ? { cookie } : undefined,
     });
@@ -104,20 +117,37 @@ async function getCurrentUser(cookie: string): Promise<CurrentUser | null> {
   } catch {
     return null;
   }
+}
+
+function getAppUrl(headerList: Awaited<ReturnType<typeof headers>>) {
+  const forwardedProto = headerList.get('x-forwarded-proto');
+  const forwardedHost = headerList.get('x-forwarded-host');
+  const host = forwardedHost ?? headerList.get('host');
+
+  if (!host) {
+    return process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+  }
+
+  const protocol = forwardedProto ?? (host.includes('localhost') ? 'http' : 'https');
+  return `${protocol}://${host}`;
 }
 
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const session = cookieStore.get('session')?.value;
-  const cookie = session ? (await headers()).get('cookie') ?? '' : '';
+  const headerList = await headers();
+  const appUrl = getAppUrl(headerList);
+  const cookie = session ? headerList.get('cookie') ?? '' : '';
   const [{ items, plan }, referralSummary, currentUser] = await Promise.all([
-    getTrackedItems(cookie),
-    getReferralSummary(cookie),
-    getCurrentUser(cookie),
+    getTrackedItems(cookie, appUrl),
+    getReferralSummary(cookie, appUrl),
+    getCurrentUser(cookie, appUrl),
   ]);
-  const isLoggedIn = Boolean(currentUser?.email);
+  const isLoggedIn = Boolean(session);
   const totalLimit = referralSummary?.totalTrackingLimit ?? 5;
-  const firstName = currentUser?.email ? formatFirstName(currentUser.email) : '';
+  const fallbackEmail = currentUser?.email ?? readEmailFromSessionToken(session);
+  const firstName = fallbackEmail ? formatFirstName(fallbackEmail) : '';
+  const userMenuEmail = fallbackEmail || 'Your account';
 
   return (
     <div className="min-h-screen">
@@ -158,7 +188,7 @@ export default async function DashboardPage() {
             )}
 
             <ThemeToggle />
-            {currentUser?.email ? <UserMenu email={currentUser.email} /> : null}
+            {isLoggedIn ? <UserMenu email={userMenuEmail} /> : null}
           </div>
         </div>
       </nav>
@@ -168,11 +198,15 @@ export default async function DashboardPage() {
 
         <div className="mb-1 flex items-start justify-between gap-3">
           <div>
-            {firstName && (
+            {firstName ? (
               <p className="mb-1 text-sm font-semibold" style={{ color: '#b91c1c' }}>
                 Hello, {firstName}!
               </p>
-            )}
+            ) : isLoggedIn ? (
+              <p className="mb-1 text-sm font-semibold" style={{ color: '#b91c1c' }}>
+                Welcome back!
+              </p>
+            ) : null}
             {!isLoggedIn && (
               <p
                 className="mb-2 inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em]"
